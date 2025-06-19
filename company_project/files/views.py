@@ -1,5 +1,4 @@
 from django.db import connection
-from datetime import datetime
 import pandas as pd
 import io
 import jwt
@@ -10,9 +9,10 @@ from rest_framework import status
 from .your_model_module import run_model_and_get_outputs
 from .preprocessing import preprocess_csv_memory
 import base64
+from psycopg2.extras import execute_values  # 핵심 부분
 
-
-@api_view(['POST']) # 토큰에 포함된 business_idx를 기반으로 제품 생산/판매 데이터를 서버에 등록합니다.
+canbin = []
+@api_view(['POST'])
 def register_data(request):
     try:
         # 1. JWT 토큰에서 business_idx 추출
@@ -26,27 +26,26 @@ def register_data(request):
         if not business_idx:
             return Response({'error': '토큰에서 업체 정보 없음'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # 2. Body에서 정보 추출
-        type_idx = request.data.get('type_idx')
-        name = request.data.get('name')
-        number = request.data.get('number')
-        date_str = request.data.get('date')
+        data = request.data.get('data')
 
-        if not all([type_idx, name, number, date_str]):
-            return Response({'error': '필수 정보 누락'}, status=status.HTTP_400_BAD_REQUEST)
+        postData = []
 
-        # 날짜 형식 검증 및 변환
-        try:
-            date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return Response({'error': '날짜 형식 오류 (예: 2023-01-02)'}, status=status.HTTP_400_BAD_REQUEST)
+        for item in data:
+            postData.append((
+                business_idx,
+                item['type_idx'],
+                item['date'],
+                item['name'],
+                item['number']
+            ))
 
-        # 3. DB insert
+        query = """
+            INSERT INTO data.list (business_idx, type_idx, date, name, number)
+            VALUES %s
+        """
+
         with connection.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO data.list (business_idx, type_idx, date, name, number)
-                VALUES (%s, %s, %s, %s, %s)
-            """, [business_idx, type_idx, date, name, number])
+            execute_values(cursor, query, postData)
 
         return Response({'message': '등록 성공'}, status=status.HTTP_200_OK)
 
@@ -56,6 +55,47 @@ def register_data(request):
         return Response({'error': '유효하지 않은 토큰'}, status=status.HTTP_401_UNAUTHORIZED)
     except Exception as e:
         return Response({'error': '서버 내부 오류', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# @api_view(['POST'])  # 토큰에 포함된 business_idx를 기반으로 제품 생산/판매 데이터를 서버에 등록합니다.
+# def register_data(request):
+#     try:
+#         # 1. JWT 토큰에서 business_idx 추출
+#         auth_header = request.headers.get('Authorization')
+#         if not auth_header or not auth_header.startswith('Bearer '):
+#             return Response({'error': '토큰 누락 또는 형식 오류'}, status=status.HTTP_401_UNAUTHORIZED)
+#
+#         token = auth_header.split(' ')[1]
+#         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+#         business_idx = payload.get('company_id')
+#         if not business_idx:
+#             return Response({'error': '토큰에서 업체 정보 없음'}, status=status.HTTP_401_UNAUTHORIZED)
+#
+#         # 2. Body에서 정보 추출
+#         type_idx = request.data.get('type_idx')
+#         name = request.data.get('name')
+#         number = request.data.get('number')
+#         date_str = request.data.get('date')  # 여기선 문자열 그대로 받음
+#
+#         if not all([type_idx, name, number, date_str]):
+#             return Response({'error': '필수 정보 누락'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         # 3. DB insert (날짜 형식 검증 제거)
+#         with connection.cursor() as cursor:
+#             cursor.execute("""
+#                 INSERT INTO data.list (business_idx, type_idx, date, name, number)
+#                 VALUES (%s, %s, %s, %s, %s)
+#             """, [business_idx, type_idx, date_str, name, number])
+#
+#         return Response({'message': '등록 성공'}, status=status.HTTP_200_OK)
+#
+#     except jwt.ExpiredSignatureError:
+#         return Response({'error': '토큰 만료'}, status=status.HTTP_401_UNAUTHORIZED)
+#     except jwt.InvalidTokenError:
+#         return Response({'error': '유효하지 않은 토큰'}, status=status.HTTP_401_UNAUTHORIZED)
+#     except Exception as e:
+#         return Response({'error': '서버 내부 오류', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 @api_view(['POST'])  # 업로드된 CSV 파일(생산량, 판매량)을 기반으로 분석을 실행합니다.
 def analyze_model_outputs(request):
@@ -107,8 +147,6 @@ def analyze_model_outputs(request):
         return Response({'error': '서버 오류', 'detail': str(e)}, status=500)
 
 
-
-
 @api_view(['GET'])
 def read_business_data(request):
     try:
@@ -133,19 +171,27 @@ def read_business_data(request):
             """, [business_idx])
             rows = cursor.fetchall()
 
-        # 3. 결과 가공
-        results = []
+        # 3. 결과 가공 - type_idx로 분리
+        type1_data = []
+        type2_data = []
         for row in rows:
-            results.append({
+            record = {
                 'idx': row[0],
                 'business_idx': row[1],
                 'type_idx': row[2],
                 'date': row[3].strftime('%Y-%m-%d'),
                 'name': row[4],
                 'number': row[5],
-            })
+            }
+            if row[2] == 1:
+                type1_data.append(record)
+            elif row[2] == 2:
+                type2_data.append(record)
 
-        return Response({'data': results}, status=200)
+        return Response({
+            'type1_data': type1_data,
+            'type2_data': type2_data
+        }, status=200)
 
     except jwt.ExpiredSignatureError:
         return Response({'error': '토큰 만료'}, status=401)
@@ -153,3 +199,5 @@ def read_business_data(request):
         return Response({'error': '유효하지 않은 토큰'}, status=401)
     except Exception as e:
         return Response({'error': '서버 오류', 'detail': str(e)}, status=500)
+
+
