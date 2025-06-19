@@ -21,8 +21,8 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/accounts/', include('accounts.urls')),
-    #path('api/inquiry/', include('inquiry.urls')),
-    path('api/files/', include('files.urls')),
+    path('admin/', admin.site.urls),                 # 장고 생성시 기본으로 생성되는 관리자 페이지
+    path('api/accounts/', include('accounts.urls')), # accounts app 연결 urls
+    #path('api/inquiry/', include('inquiry.urls')),  # inquiry app 연결 urls
+    path('api/files/', include('files.urls')),       # files app 연결 urls
 ]

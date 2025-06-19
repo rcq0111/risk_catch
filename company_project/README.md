@@ -11,35 +11,36 @@
 
 ---
 ## 프로젝트 구조
-```json
-company_project/
-├── company_project/              ← Django 프로젝트 설정 디렉토리
-│   ├── __init__.py
-│   ├── settings.py               ← 전체 설정 파일 (앱 등록, DB 등)
-│   ├── urls.py                   ← 전역 URL 라우팅
-│   └── wsgi.py / asgi.py
 
-├── accounts/                     ← 회원가입 / 로그인 / 업체 관련 기능
-│   ├── __init__.py
-│   ├── views.py                  ← 업체 등록, 수정, 삭제, 로그인 처리
-│   ├── urls.py                   ← /api/accounts/ 엔드포인트
-│   └── (models.py)               ← 마이그레이션 없이 쿼리 직접 처리
 
-├── files/                        ← CSV 업로드 / 분석 기능
-│   ├── __init__.py
-│   ├── views.py                  ← 분석 실행, 결과 확인
-│   ├── urls.py                   ← /api/files/ 엔드포인트
-│   └── (models.py)
+    company_project/
+        ├── company_project/              ← Django 프로젝트 설정 디렉토리
+        │   ├── __init__.py
+        │   ├── settings.py               ← 전체 설정 파일 (앱 등록, DB 등)
+        │   ├── urls.py                   ← 전역 URL 라우팅
+        │   └── wsgi.py / asgi.py
+        
+        ├── accounts/                     ← 회원가입 / 로그인 / 업체 관련 기능
+        │   ├── __init__.py
+        │   ├── views.py                  ← 업체 등록, 수정, 삭제, 로그인 처리
+        │   ├── urls.py                   ← /api/accounts/ 엔드포인트
+        │   └── (models.py)               ← 마이그레이션 없이 쿼리 직접 처리
+        
+        ├── files/                        ← CSV 업로드 / 분석 기능
+        │   ├── __init__.py
+        │   ├── views.py                  ← 분석 실행, 결과 확인
+        │   ├── urls.py                   ← /api/files/ 엔드포인트
+        │   └── (models.py)
+        
+        ├── inquiry/                      ← 🔹 새로 추가된 문의하기 앱
+        │   ├── __init__.py
+        │   ├── views.py                  ← 문의 등록 처리 (POST)
+        │   ├── urls.py                   ← /api/inquiry/ 엔드포인트
+        │   └── (models.py)               ← 마이그레이션 없이 쿼리로 사용
+        
+        ├── manage.py                     ← Django 명령어 실행 도구
+        └── patch.txt                     ← Project 에 설치해야할 목록들 (README.md 마지막 현재 버전 참고바람)
 
-├── inquiry/                      ← 🔹 새로 추가된 문의하기 앱
-│   ├── __init__.py
-│   ├── views.py                  ← 문의 등록 처리 (POST)
-│   ├── urls.py                   ← /api/inquiry/ 엔드포인트
-│   └── (models.py)               ← 마이그레이션 없이 쿼리로 사용
-
-├── manage.py                     ← Django 명령어 실행 도구
-└── patch.txt                     ← Project 에 설치해야할 목록들 (README.md 마지막 현재 버전 참고바람)
-```
 ---
 # 📦 Django 기반 업체 등록 API
 
@@ -55,7 +56,7 @@ company_project/
 
 #### 📨 Request Body (예시)
 
-```json
+```jsonc
 {
   "name": "한글ABC123",             // 상호명 (한글, 영문, 숫자만 허용)
   "ceo_name": "홍길동",             // 대표자 이름
@@ -63,15 +64,16 @@ company_project/
   "email": "test@example.com",     // 이메일 (@.com 형식)
   "phone": "010-1234-5678"         // 전화번호 (010-0000-0000 형식)
 }
-
-✅ 예시 응답
-
+```
+ ✅ 예시 응답
+```json
 {
   "code": "953091"
 }
 
-code는 랜덤하게 생성된 6자리 업체코드
 ```
+code는 랜덤하게 생성된 6자리 업체코드
+
 
 ## 📌 GET /api/accounts/get-code/
 
@@ -133,7 +135,7 @@ GET http://localhost:8000/api/accounts/get-code/?name=ABC123상호&ceo_name=홍�
 }
 ```
 ### 📥 Response
-```json
+```jsonc
 {
   "duplicate": true // true : 중복
 }
@@ -152,7 +154,7 @@ GET http://localhost:8000/api/accounts/get-code/?name=ABC123상호&ceo_name=홍�
 }
 ```
 ### 📥 Response
-```json
+```jsonc
 {
   "duplicate": false // false : 중복 X
 }
@@ -237,8 +239,9 @@ Authorization: Bearer <access_token>
 ### 📥 요청 Body 예시
 ```json
 {}
-※ 삭제는 body 필요 없음 (idx는 토큰에서 추출)
 ```
+※ 삭제는 body 필요 없음 (idx는 토큰에서 추출)
+
 ---
 ### ✅ 성공 응답
 ```json
@@ -363,7 +366,7 @@ Authorization: Bearer <access_token>
 }
 ```
 3. 내부 오류:
-```json
+```jsonc
 {
   "error": "서버 내부 오류",
   "detail": "데이터베이스 연결 실패"  // 예시
@@ -526,7 +529,6 @@ Content-Disposition: attachment; filename="chart4.png"
 {
   "error": "유효하지 않은 토큰"
 }
-}
 ```
 
 ---
@@ -627,31 +629,28 @@ Content-Disposition: attachment; filename="chart4.png"
 ```
 
 ## ✅ 1. Django 서버 외부 접속 허용 설정
-```json
+
 🔧 settings.py 수정
-
+```jsonc
 ALLOWED_HOSTS = ['*']  # 또는 ['내IP주소', 'localhost']
-
 ```
 
 ### ✅ 2. 서버 실행 시 0.0.0.0으로 열기
-```json
-python manage.py runserver 0.0.0.0:8000
-
+```bash
+ python manage.py runserver 0.0.0.0:8000
+```
 이렇게 해야 다른 컴퓨터에서도 접근 가능해
 (기본 127.0.0.1이면 자기 컴퓨터만 가능함)
 
-```
 
 ### ✅ 3. 방화벽/윈도우 보안 허용 확인
-```json
-윈도우 보안 알림이 뜨면 공용/개인 네트워크 허용 체크
 
-포트 8000이 방화벽에서 허용되어 있어야 함
-```
+> 윈도우 보안 알림이 뜨면 공용/개인 네트워크 허용 체크
+> 포트 8000이 방화벽에서 허용되어 있어야 함
+
 
 ### ✅ 4. 접속 주소
-```json
+```cmd
 서버 컴퓨터의 IP 주소 확인 (cmd 창에서): ipconfig
 
 → 예: 192.168.0.17
@@ -666,12 +665,12 @@ http://192.168.0.17:8000/api/accounts/register/
 # 📦  PostgreSQL
 
 ## ✅ 1. psycopg2 드라이버 설치
-```json
+```bash
 pip install psycopg2-binary
 ```
 
 ## ✅ 2. settings.py에 PostgreSQL 설정
-```json
+```jsonc
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -688,28 +687,23 @@ DATABASES = {
 ## ✅ 3. PostgreSQL에서 데이터베이스와 사용자 미리 생성
 
 ### psql 터미널 접속 (또는 PgAdmin 사용)
-```json
-bash
-
+```bash
 psql -U postgres
 ```
-```json
-sql
-
--- 데이터베이스 생성
-CREATE DATABASE company_db;
-
--- 사용자 생성 (필요 시)
-CREATE USER myuser WITH PASSWORD 'mypassword';
-
--- 권한 부여
-GRANT ALL PRIVILEGES ON DATABASE company_db TO myuser;
-
-```
+    
+    sql
+    
+    -- 데이터베이스 생성
+    CREATE DATABASE company_db;
+    
+    -- 사용자 생성 (필요 시)
+    CREATE USER myuser WITH PASSWORD 'mypassword';
+    
+    -- 권한 부여
+    GRANT ALL PRIVILEGES ON DATABASE company_db TO myuser;
+        
 ## ✅ 4. Django 마이그레이션 수행
-```json
-bash
-
+```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
@@ -717,15 +711,11 @@ python manage.py migrate
 ## ✅ 5. (선택) 기존 데이터 옮기기
 
 ### 만약 SQLite에서 옮기는 거면:
-```json
-bash
-
+```bash
 python manage.py dumpdata > data.json
 ```
 ### PostgreSQL로 바꾼 뒤:
-```json
-bash
-
+```bash
 python manage.py loaddata data.json
 ```
 ---
@@ -734,30 +724,24 @@ python manage.py loaddata data.json
 ## ✅ 1. PostgreSQL 설정 변경
 ### 📍 postgresql.conf 수정
 경로 예시 (Ubuntu):
-```json
-bash
-
+```bash
 sudo nano /etc/postgresql/14/main/postgresql.conf
 ```
 - 버전에 따라 14 대신 13, 15 등 다를 수 있음
 
 ### 수정 항목:
-```json
-conf
-
+```conf
 listen_addresses = '*'
 ```
 - 원래는 'localhost'로 되어 있음 → '*'로 바꿔야 외부에서 접속 가능
 
 ## ✅ 2. 클라이언트 IP 허용 (pg_hba.conf)
 경로 예시:
-```json
-bash 
-
+```bash
 sudo nano /etc/postgresql/14/main/pg_hba.conf
 ```
 ### 파일 맨 아래에 추가:
-```json
+```
 conf
 
 # 예: 특정 IP 1개만 허용
@@ -770,27 +754,21 @@ host    all             all             192.168.0.0/16          md5
 - 192.168.x.x, 10.x.x.x 같은 내부망 IP 가능
 
 ## ✅ 3. PostgreSQL 재시작
-```json
-bash
-
+```bash
 sudo systemctl restart postgresql
 ```
 또는 
-```json
-bash
-
+```bash
 sudo service postgresql restart
 ```
 ## ✅ 4. 서버 방화벽 열기
 ### Ubuntu UFW 사용하는 경우:
-```json
-bash
-
+```bash
 sudo ufw allow 5432/tcp
 ```
 
 ## ✅ 5. Django 설정 변경 (settings.py)
-```json
+```
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -805,9 +783,7 @@ DATABASES = {
 
 ## ✅ 6. 접속 테스트
 
-```json
-bash
-
+```bash
 psql -h 192.168.0.10 -U postgres -d company_db
 ```
 또는 PgAdmin, DBeaver, Postman 등에서 시도해봐도 됨.
@@ -828,9 +804,7 @@ psql -h 192.168.0.10 -U postgres -d company_db
 # 🧱 프로잭트 setting 방법
 
 ## ✅ 1. 설치 및 세팅
-```json
-bash
-
+```bash
 pip install django djangorestframework pandas
 django-admin startproject company_project
 cd company_project
@@ -838,7 +812,7 @@ python manage.py startapp accounts
 python manage.py startapp files
 ```
 settings.py에 앱과 DRF 추가:
-```json
+```
 INSTALLED_APPS = [
     ...
     'rest_framework',
@@ -849,18 +823,14 @@ INSTALLED_APPS = [
 
 ## ✅ 2. 업체 인증 후 JWT 발급 API (signin)
 🔒 JWT 사용을 위해 pyjwt 설치:
-```json
-bash
-
+```bash
 pip install PyJWT
 
 ```
 ---
 ## 현재 버전
 - 확인 방법:
-```json
-bash
-
+```bash
 pip freeze
 ```
 > 아래 항목은 패치해주길 바람

@@ -38,15 +38,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'rest_framework',
-    'accounts',
-    'files',
-    'corsheaders',
-    'inquiry',
+    'rest_framework', # 여기서부터 추가된 앱
+    'accounts',       # 로그인 서비스
+    'files',          # 데이터 저장, 분석
+    'corsheaders',    # 외부에서 서버접속을 위해 필요한 코드 (corsheaders)
+    'inquiry',        # 문의하기 글 업로드, 수정 삭제
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # 외부에서 서버접속을 위해 필요한 코드 (corsheaders)
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -60,7 +60,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 
 
-CORS_ALLOW_METHODS = [
+CORS_ALLOW_METHODS = [ # 외부에서 서버접속을 위해 필요한 코드 (corsheaders)
     "DELETE",
     "GET",
     "OPTIONS",
@@ -89,17 +89,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'company_project.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-# 여기 PostgreSQL로 수정하면됨
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
 
 DATABASES = {
     'default': {

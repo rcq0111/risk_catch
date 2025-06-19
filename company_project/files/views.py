@@ -1,21 +1,18 @@
-import base64
-
-import numpy as np
 from django.db import connection
 from datetime import datetime
 import pandas as pd
 import io
 import jwt
 from django.conf import settings
-from rest_framework.decorators import api_view, parser_classes
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from django.http import HttpResponse, FileResponse
 from .your_model_module import run_model_and_get_outputs
+from .preprocessing import preprocess_csv_memory
+import base64
 
 
-@api_view(['POST'])
+@api_view(['POST']) # 토큰에 포함된 business_idx를 기반으로 제품 생산/판매 데이터를 서버에 등록합니다.
 def register_data(request):
     try:
         # 1. JWT 토큰에서 business_idx 추출
@@ -60,8 +57,7 @@ def register_data(request):
     except Exception as e:
         return Response({'error': '서버 내부 오류', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-@api_view(['POST'])
+@api_view(['POST'])  # 업로드된 CSV 파일(생산량, 판매량)을 기반으로 분석을 실행합니다.
 def analyze_model_outputs(request):
     try:
         file1 = request.FILES.get('file1')
@@ -71,105 +67,47 @@ def analyze_model_outputs(request):
         if not all([file1, file2, code]):
             return Response({'error': 'file1, file2, code는 필수입니다.'}, status=400)
 
-        # pandas로 읽기
-        df1 = pd.read_csv(file1)
-        df2 = pd.read_csv(file2)
+        # pandas로 로드
+        df_raw1 = pd.read_csv(file1)
+        df_raw2 = pd.read_csv(file2)
+
+        # 전처리
+        df1 = preprocess_csv_memory(df_raw1)
+        df2 = preprocess_csv_memory(df_raw2)
 
         # 모델 실행 (직접 구현 필요)
         df_result1, df_result2, img1, img2, img3, img4 = run_model_and_get_outputs(df1, df2, code)
 
-        # CSV 응답 준비
+        # CSV를 문자열로 변환
         csv1_io = io.StringIO()
         csv2_io = io.StringIO()
         df_result1.to_csv(csv1_io, index=False)
         df_result2.to_csv(csv2_io, index=False)
 
-        # 이미지 바이너리 응답 준비
-        img_io_list = []
+        # 이미지 base64 인코딩
+        images_b64 = []
         for fig in [img1, img2, img3, img4]:
             img_io = io.BytesIO()
             fig.savefig(img_io, format='png')
             img_io.seek(0)
-            img_io_list.append(img_io)
+            img_b64 = base64.b64encode(img_io.getvalue()).decode('utf-8')
+            images_b64.append(img_b64)
 
-        # Multipart 응답
-        response = HttpResponse(content_type='multipart/mixed; boundary=boundary123')
-        response.write('--boundary123\r\n')
-        response.write('Content-Type: text/csv\r\nContent-Disposition: attachment; filename="result1.csv"\r\n\r\n')
-        response.write(csv1_io.getvalue())
-        response.write('\r\n--boundary123\r\n')
-        response.write('Content-Type: text/csv\r\nContent-Disposition: attachment; filename="result2.csv"\r\n\r\n')
-        response.write(csv2_io.getvalue())
-
-        for i, img_io in enumerate(img_io_list, 1):
-            response.write(f'\r\n--boundary123\r\n')
-            response.write(f'Content-Type: image/png\r\nContent-Disposition: attachment; filename="chart{i}.png"\r\n\r\n')
-            response.write(img_io.getvalue())
-
-        response.write('\r\n--boundary123--')
-        return response
+        # JSON 응답
+        return Response({
+            'csv1': csv1_io.getvalue(),
+            'csv2': csv2_io.getvalue(),
+            'image1': images_b64[0],
+            'image2': images_b64[1],
+            'image3': images_b64[2],
+            'image4': images_b64[3],
+        })
 
     except Exception as e:
         return Response({'error': '서버 오류', 'detail': str(e)}, status=500)
 
-# import pandas as pd
-# import io
-# import matplotlib.pyplot as plt
-# from rest_framework.decorators import api_view
-#
-#
-# @api_view(['POST'])
-# @parser_classes([MultiPartParser, FormParser])
-# def analyze_model_input(request):
-#     try:
-#         file1 = request.FILES.get('file1')
-#         file2 = request.FILES.get('file2')
-#         code = request.data.get('code')
-#
-#         if not file1 or not file2 or not code:
-#             return Response({'error': '필수 입력 누락'}, status=400)
-#
-#         # 실제 모델이 들어갈 자리 (지금은 더미 데이터)
-#         df1 = pd.read_csv(file1)
-#         df2 = pd.read_csv(file2)
-#
-#         # 더미 결과 CSV
-#         result_csv_1 = io.StringIO()
-#         result_csv_2 = io.StringIO()
-#         pd.DataFrame({'제품': ['A', 'B'], '수량': [10, 20]}).to_csv(result_csv_1, index=False)
-#         pd.DataFrame({'지역': ['서울', '부산'], '판매량': [100, 80]}).to_csv(result_csv_2, index=False)
-#         result_csv_1.seek(0)
-#         result_csv_2.seek(0)
-#
-#         # 더미 이미지 생성
-#         image_buffers = []
-#         for i in range(4):
-#             fig, ax = plt.subplots()
-#             ax.plot(np.random.rand(10))
-#             buf = io.BytesIO()
-#             fig.savefig(buf, format='png')
-#             buf.seek(0)
-#             image_buffers.append(buf)
-#             plt.close(fig)
-#
-#         return Response({
-#             'csv1': result_csv_1.getvalue(),
-#             'csv2': result_csv_2.getvalue(),
-#             'image1': base64.b64encode(image_buffers[0].read()).decode(),
-#             'image2': base64.b64encode(image_buffers[1].read()).decode(),
-#             'image3': base64.b64encode(image_buffers[2].read()).decode(),
-#             'image4': base64.b64encode(image_buffers[3].read()).decode(),
-#         }, status=200)
-#
-#     except Exception as e:
-#         return Response({'error': '서버 오류', 'detail': str(e)}, status=500)
 
-import jwt
-from django.conf import settings
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from django.db import connection
+
 
 @api_view(['GET'])
 def read_business_data(request):
